@@ -22,9 +22,9 @@ class DQNAgent:
         tam_inicio_entr: Tamaño minimo de la memoria alcanzado para poder entrenar
     '''
 
-    def __init__(self, tam_estado=4, tam_memoria=5000, descuento=0.95,
-                 epsilon=1, epsilon_min=0, epsilon_stop_episodio=2000,
-                 neuronas=[64,64], activaciones=['relu', 'relu', 'linear'],
+    def __init__(self, tam_estado=4, tam_memoria=10000, descuento=0.95,
+                 epsilon=1, epsilon_min=0.05, epsilon_stop_episodio=200,
+                 neuronas=[32,32], activaciones=['relu', 'relu', 'linear'],
                  perdida='mse', optimizador='adam', tam_inicio_entr=None):
 
         assert len(activaciones) == len(neuronas) + 1
@@ -80,13 +80,13 @@ class DQNAgent:
 
 
     def el_mejor_estado(self, estados):
-        '''Returns the best state for a given collection of states'''
+
         max_valor = None
         mejor_estado = None
         k=-1
 
         if random.random() <= self.epsilon:
-            return random.choice(list(estados)),k
+            return random.choice(list(estados)),k,0
 
         else:
             for estado in estados:
@@ -98,12 +98,12 @@ class DQNAgent:
                     mejor_k=k
                 
         
-        return mejor_estado,mejor_k
+        return mejor_estado,mejor_k,max_valor
 
 
     # Entrenamos al agente
 
-    def train(self, batch_size, epochs):
+    def train(self, batch_size, epochs, puntuacion, q_actual):
 
         n = len(self.memoria)
 
@@ -125,9 +125,14 @@ class DQNAgent:
                     new_q = premio + self.descuento * siguientes_qs[i]
                 else:
                     new_q = premio
+                if new_q>0:
+                    new_q=new_q*(puntuacion+1)
+
+
+                y.append(new_q)
 
                 x.append(estado)
-                y.append(new_q)
+
 
 
             self.modelo.fit(np.array(x), np.array(y), batch_size=batch_size, epochs=epochs, verbose=0)

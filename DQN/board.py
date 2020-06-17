@@ -6,10 +6,11 @@ import numpy as np
 def board_prop(board):
     pesos=board_pesos(board)
     peso_max=board_peso_max(pesos)
+    #casillas_para_completar=casillas_completar(board,19-peso_max)
     diferencia=board_diferencia_pesos(pesos)
     agujeros=board_agujeros(board)
     sum_pesos=np.sum(pesos)
-    return[peso_max,diferencia,agujeros,sum_pesos]
+    return[peso_max,diferencia,sum_pesos,agujeros]
 
 
 # Calculamos el peso de cada columna, es decir, la altura maxima que tienen las casillas
@@ -37,7 +38,14 @@ def board_peso_max(pesos):
            peso_max=peso
     return peso_max
 
-# Deolvemos el peso maimo de la columna indicada
+def board_peso_min(pesos):
+    peso_min=21
+    for peso in pesos:
+       if peso<peso_min:
+           peso_min=peso
+    return peso_min
+
+# Deolvemos el peso maximo de la columna indicada
 
 def board_peso_pos(board,pos):
     peso=0
@@ -87,3 +95,18 @@ def board_agujeros(board):
                 agujero=agujero+1
         agujeros=agujeros+agujero
     return agujeros
+
+def casillas_completar(board,x):
+    cont=0
+    for i in range(0,10):
+        if board[x][i]==239:
+            cont=cont+1
+    return cont
+
+def casillas_completar_totales(board,peso_max):
+    total=0
+    for y in range (19-peso_max,20):
+        total=total+casillas_completar(board,y)
+    return total
+
+

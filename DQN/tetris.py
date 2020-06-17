@@ -6,8 +6,9 @@ import random
 from DQN import DQNAgent
 from datetime import datetime
 from statistics import mean, median
-from board import board_prop,eliminar_linea,board_peso_max
+from board import board_prop,eliminar_linea,board_peso_max,casillas_completar
 import numpy as np
+import time
 
 # posibles_estados: dado el estado del tablero actual (es decir, las piezas ya colocadas),
 # y la pieza a colocar calcula todos los estados posibles simulando la colocacion de dicha
@@ -58,14 +59,16 @@ def posibles_estados(board,nom_piez):
 env = gym_tetris.make('TetrisA-v0')
 env = JoypadSpace(env, MOVEMENT)
 
-episodios = 5000               # Numero de partidas a realizar
+episodios = 10000               # Numero de partidas a realizar
 max_steps = None               # Numero de pasos a realizar en cada partida 
 
-entrenar_cada = 1                # Numero que indica cada cuantos episodios entrenar 
-
+entrenar_cada = 1               # Numero que indica cada cuantos episodios entrenar 
+movimientos=[]
 
 file = open("resultados_DQN.txt", "w")
 agent = DQNAgent()
+
+inicio = time.perf_counter()
 
 puntuacion_max=0
 for episodio in range(0,episodios):
@@ -77,6 +80,7 @@ for episodio in range(0,episodios):
     antiguo_statistics=informacion['statistics']
 
     estado=[0,0,0,0]
+    ant_casillas_para_completar=10
     pieza_colocada=True
     u=-1
     lineas_completadas=0
@@ -102,7 +106,7 @@ for episodio in range(0,episodios):
             pos=5
             u=-1
             posiciones,estados,piezas=posibles_estados(board,nom_piez)
-            mejor_estado,k=agent.el_mejor_estado(estados)[:]
+            mejor_estado,k,valor=agent.el_mejor_estado(estados)[:]
             if k<0:
                 k=0
                 for estado_i in estados:
@@ -111,6 +115,7 @@ for episodio in range(0,episodios):
                     k=k+1
             pos_objetivo=posiciones[k]
             pieza=piezas[k]
+
            
             
         # Giramos la pieza hasta que tengamos el giro que queramos
@@ -142,6 +147,7 @@ for episodio in range(0,episodios):
         # Comprobamos si la pieza ya ha sido colocada, y en caso afirmativo calculamos la recompensa
         # y añadimos los datos a la  memoria
         if antiguo_statistics!=informacion['statistics']:
+            #casillas_para_completar=casillas_completar(board,19-mejor_estado[0])
             premio=estado[0]-mejor_estado[0]+estado[1]-mejor_estado[1]+estado[2]-mejor_estado[2]+estado[3]-mejor_estado[3]
             informacion=env.get_info()
             antiguo_statistics=informacion['statistics']
@@ -149,12 +155,16 @@ for episodio in range(0,episodios):
             mejor_estado=board_prop(board)[:]
             if lineas_completadas<informacion['number_of_lines'] and not terminado:
                premio=premio+40*(-lineas_completadas+informacion['number_of_lines'])
-               
                lineas_completadas=informacion['number_of_lines']
                state, reward, terminado, info = env.step(0)
                agent.add_memoria(estado, mejor_estado, premio, terminado)
+               #movimientos.append([estado,mejor_estado,premio,terminado,valor])
+           
+
 
             agent.add_memoria(estado, mejor_estado, premio, terminado)
+            #ant_casillas_para_completar=casillas_para_completar
+            #movimientos.append([estado,mejor_estado,premio,terminado,valor])
             estado=mejor_estado[:]
             pieza_colocada=True
 
@@ -165,10 +175,12 @@ for episodio in range(0,episodios):
     if puntuacion>puntuacion_max:
         puntuacion_max=puntuacion
         agent.modelo.save('modelo_max.modelo')
-
+    
     # Entrenamos al agente con los datos obtenidos de la partida
     if episodio % entrenar_cada == 0:
-        agent.train(batch_size=128, epochs=1)
+        agent.train(batch_size=500, epochs=1, puntuacion=lineas_completadas,q_actual=valor)
+    fin=time.perf_counter()
+    print(fin-inicio)
 
 file.close()
 env.close()
